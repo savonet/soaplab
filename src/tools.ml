@@ -26,7 +26,7 @@ open Bigarray
 let seconds_to_minsec d =
   let m = d /. 60. in
   let s = d -. (60. *. floor m) in
-    Printf.sprintf "%d:%06.03f" (int_of_float m) s
+  Printf.sprintf "%d:%06.03f" (int_of_float m) s
 
 let ignore_thread f =
   ignore (Thread.create f ())
@@ -40,20 +40,25 @@ let temp_files = ref []
 let unlink_temp_files () =
   List.iter (fun f -> Unix.unlink f) !temp_files
 
+(*
 let alloc_buffer chans length =
-  let filename = Filename.temp_file "beatit" ".tmp.wave" in
-  let fd =
-    Unix.openfile filename [Unix.O_RDWR; Unix.O_CREAT; Unix.O_TRUNC] 0o644
-  in
+  let filename = Filename.temp_file "soaplab" ".tmp.wave" in
+  let fd = Unix.openfile filename [Unix.O_RDWR; Unix.O_CREAT; Unix.O_TRUNC] 0o644 in
   temp_files := filename :: !temp_files;
   let dims = Array.make chans length in
-  Bigarray.array2_of_genarray (Unix.map_file fd Bigarray.float32 Bigarray.c_layout true dims)
+  Printf.printf "allocating %d\n%!" length;
+  let buf = Unix.map_file fd Bigarray.float32 Bigarray.c_layout true dims in
+  Bigarray.array2_of_genarray buf
+*)
+
+let alloc_buffer chans length =
+  Bigarray.Array2.create Bigarray.float32 Bigarray.c_layout length chans
 
 let buffer_blit b1 o1 b2 o2 len =
   let chans = Array2.dim2 b1 in
-    for i = 0 to len - 1 do
-      for c = 0 to chans - 1 do
-        let v = Array2.get b1 (o1 + i) c in
-          Array2.set b2 (o2 + i) c v
-      done;
-    done
+  for i = 0 to len - 1 do
+    for c = 0 to chans - 1 do
+      let v = Array2.get b1 (o1 + i) c in
+      Array2.set b2 (o2 + i) c v
+    done;
+  done

@@ -28,11 +28,12 @@ let usage = Sys.argv.(0) ^ " [--editor <file>]"
 let file = ref None
 
 let () =
+  Printexc.record_backtrace true;
+  Portaudio.init ();
   Arg.parse [] (fun s -> file := Some s) usage
 
-let () = Portaudio.init ()
-
-let se = new SoundEditor.sound_editor ~file:(Filename.dirname Sys.argv.(0) ^ "/ias.glade")
+let se =
+  new SoundEditor.sound_editor ~file:(Filename.dirname Sys.argv.(0) ^ "/ias.glade")
 
 let () =
   (* Connect quit *)
@@ -40,11 +41,7 @@ let () =
   ignore (se#menu_quit#connect#activate ~callback:on_quit) ;
 
   (* File *)
-  match !file with
-    | Some f ->
-        se#open_file f
-    | None -> ()
+  Option.iter se#open_file !file;
 
-let () =
   (* Start the event loop. *)
   GtkThread.main ()

@@ -252,15 +252,17 @@ object (self)
       progress#set_text "Decoding...";
       progress#misc#show ();
       let dec, fd = Vorbis.File.Decoder.openfile f in
+      let chans = 2 in
       let totlen = Vorbis.File.Decoder.samples dec (Vorbis.File.Decoder.bitstream dec) in
+      Printf.printf "%d samples\n%!" totlen;
       let bigbuf = Tools.alloc_buffer 2 totlen in
       let buflen = 1024 in
-      let buf = Array.init 2 (fun _ -> Array.make buflen 0.) in
+      let buf = Array.init chans (fun _ -> Array.make buflen 0.) in
       let off = ref 0 in
       Printf.printf "Reading data...\n%!" ;
       while !off < totlen do
         let len = Vorbis.File.Decoder.decode_float dec buf 0 buflen in
-        for c = 0 to 1 do
+        for c = 0 to chans - 1 do
           let buf_c = buf.(c) in
           for i = 0 to len - 1 do
             Bigarray.Array2.set bigbuf (!off + i) c buf_c.(i)
@@ -269,7 +271,8 @@ object (self)
         off := !off + len;
         progress#set_fraction ((float !off) /. (float totlen))
       done;
-      Printf.printf "Track done\n%!" ;
+      Printf.printf "Track done\n%!";
+      progress#set_text "Decoded.";
       Unix.close fd;
       (get_some wd)#set_data bigbuf;
       self#set_zoom (get_some wd)#get_zoom_fit;
