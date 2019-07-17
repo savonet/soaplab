@@ -1,2 +1,2 @@
 B +threads
-PKG lablgtk2 portaudio ogg vorbis
+PKG lablgtk2 pulseaudio ogg vorbis

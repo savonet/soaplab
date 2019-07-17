@@ -29,7 +29,6 @@ let file = ref None
 
 let () =
   Printexc.record_backtrace true;
-  Portaudio.init ();
   Arg.parse [] (fun s -> file := Some s) usage
 
 let se =

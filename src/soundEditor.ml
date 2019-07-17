@@ -131,48 +131,45 @@ object (self)
     while play_thread <> None do
       Thread.yield () (* TODO: find something better *)
     done;
-    play_thread <-
-      Some (
-          Thread.create
-            (fun () ->
-              try
-                let old_cursor = (get_some wd)#cursor in
-                let chans = (get_some wd)#channels in
-                (* TODO: open the stream once for all *)
-                let dev = Portaudio.open_default_stream 0 chans sample_rate 256 in
-                let buflen = 1024 in
-                let buf = Array.init chans (fun _ -> Array.make buflen 0.) in
-                let len = ref (-1) in
-                if loop then
-                  (get_some wd)#set_cursor (get_some wd)#selection_start;
-                Portaudio.start_stream dev;
-                playing <- true;
-                while playing && (!len <> 0 || loop) && (not loop || (get_some wd)#selection_length <> 0) do
-                  if !len = 0 && loop then
-                    (get_some wd)#set_cursor (get_some wd)#selection_start;
-                  let ofs = (get_some wd)#cursor in
-                  let buflen =
-                    if loop then
-                      min buflen ((get_some wd)#selection_start + (get_some wd)#selection_length - ofs)
-                    else
-                      buflen
-                  in
-                  len := (get_some wd)#get_data ofs buf 0 buflen;
-                  (get_some wd)#set_cursor (ofs + !len);
-                  entry_position#set_text (Tools.seconds_to_minsec (float_of_int ofs /. (get_some wd)#samples_per_second)) ;
-                  Portaudio.write_stream dev buf 0 !len
-                done;
-                (get_some wd)#set_cursor old_cursor;
-                Portaudio.stop_stream dev;
-                Portaudio.close_stream dev;
-                playing <- false;
-                play_thread <- None
-              with
-              | Portaudio.Error n ->
-                 play_thread <- None;
-                 error_dialog ~parent:toplevel ~title:"Portaudio error" ((Portaudio.string_of_error n) ^ ".")
-            ) ()
-        )
+    let play () =
+      let old_cursor = (get_some wd)#cursor in
+      let chans = (get_some wd)#channels in
+      (* TODO: open the stream once for all *)
+      let sf =
+        { Pulseaudio.
+          sample_format = Pulseaudio.Sample_format_float32le;
+          sample_rate = sample_rate;
+          sample_chans = chans;
+        }
+      in
+      let dev = Pulseaudio.Simple.create ~client_name:"Soaplab" ~dir:Pulseaudio.Dir_playback ~stream_name:"Output" ~sample:sf ()
+      in
+      let buflen = 1024 in
+      let buf = Array.init chans (fun _ -> Array.make buflen 0.) in
+      let len = ref (-1) in
+      if loop then (get_some wd)#set_cursor (get_some wd)#selection_start;
+      playing <- true;
+      while playing && (!len <> 0 || loop) && (not loop || (get_some wd)#selection_length <> 0) do
+        if !len = 0 && loop then
+          (get_some wd)#set_cursor (get_some wd)#selection_start;
+        let ofs = (get_some wd)#cursor in
+        let buflen =
+          if loop then
+            min buflen ((get_some wd)#selection_start + (get_some wd)#selection_length - ofs)
+          else
+            buflen
+        in
+        len := (get_some wd)#get_data ofs buf 0 buflen;
+        (get_some wd)#set_cursor (ofs + !len);
+        entry_position#set_text (Tools.seconds_to_minsec (float_of_int ofs /. (get_some wd)#samples_per_second));
+        Pulseaudio.Simple.write dev buf 0 !len
+      done;
+      (get_some wd)#set_cursor old_cursor;
+      Pulseaudio.Simple.free dev;
+      playing <- false;
+      play_thread <- None
+    in
+    play_thread <- Some (Thread.create play ())
 
   method on_stop () =
     playing <-false

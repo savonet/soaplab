@@ -2,7 +2,7 @@ SOURCES = tools.ml \
           gtkHelper.ml gtkWaveDisplay.mli gtkWaveDisplay.ml ias.ml \
           soundEditor.ml soaplab.ml
 RESULT = soaplab
-PACKS = lablgtk2.auto-init lablgtk2.glade ogg vorbis portaudio bigarray
+PACKS = lablgtk2.auto-init lablgtk2.glade ogg vorbis pulseaudio bigarray
 THREADS = yes
 
 all: ias.ml nc
